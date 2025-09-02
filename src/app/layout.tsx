@@ -1,20 +1,16 @@
 // src/app/layout.tsx
-import "./globals.css";
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-
-const inter = Inter({ subsets: ["latin"] });
-
-export const metadata: Metadata = {
-  title: "SmartMatePro Dashboard",
-  description: "Admin dashboard for SmartMatePro",
-};
+import "./globals.css";           // ← ОБЯЗАТЕЛЬНО
+import Providers from "./providers";
+import { Toaster } from "@/components/ui/toaster";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} min-h-screen bg-background text-foreground`}>
-        {children}
+      <body className="min-h-screen bg-background font-sans antialiased">
+        <Providers>
+          {children}
+          <Toaster />
+        </Providers>
       </body>
     </html>
   );

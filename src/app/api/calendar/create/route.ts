@@ -1,34 +1,40 @@
+// src/app/api/calendar/create/route.ts
 import { NextResponse } from "next/server";
-import { calendarService } from "@/lib/calendarService";
-
-// fallback для старых клиентов
-function toISO(date: string, time: string) {
-    const [y, m, d] = date.split("-").map(Number);
-    const [hh, mm] = time.split(":").map(Number);
-    return new Date(y, m - 1, d, hh, mm, 0).toISOString(); // серверная TZ — только как запасной путь
-}
+import { getAuth, getCalendar, hasOverlap, validateSlot } from "@/lib/gcal";
 
 export async function POST(req: Request) {
     try {
-        const body = await req.json();
-        const { title, start, end, date, time, durationMins } = body || {};
-        if (!title) return NextResponse.json({ error: "Missing title" }, { status: 400 });
+        const { title, start, end, client } = await req.json();
 
-        let s = start as string | undefined;
-        let e = end as string | undefined;
+        const err = validateSlot(start, end);
+        if (err) return NextResponse.json({ ok: false, error: err }, { status: 400 });
 
-        if (!s || !e) {
-            if (!date || !time) return NextResponse.json({ error: "Missing date/time" }, { status: 400 });
-            const iso = toISO(String(date), String(time));
-            const dur = Number(durationMins || 60);
-            s = iso;
-            e = new Date(new Date(iso).getTime() + dur * 60000).toISOString();
+        const auth = getAuth("https://www.googleapis.com/auth/calendar");
+        const calendar = getCalendar(auth);
+        const calendarId = process.env.GOOGLE_CALENDAR_ID || "primary";
+
+        if (await hasOverlap({ calendarId, startISO: start, endISO: end, auth })) {
+            return NextResponse.json({ ok: false, error: "Slot overlaps" }, { status: 409 });
         }
 
-        const created = await calendarService.create(String(title), s, e);
-        return NextResponse.json({ ok: true, created }, { status: 201 });
-    } catch (e) {
-        console.error(e);
-        return NextResponse.json({ error: "Failed to create" }, { status: 500 });
+        const ev = await calendar.events.insert({
+            calendarId,
+            requestBody: {
+                summary: title || "Booking",
+                start: { dateTime: start },
+                end: { dateTime: end },
+                extendedProperties: {
+                    private: {
+                        source: "smartmatepro",
+                        clientName: client?.name ?? "",
+                        clientPhone: client?.phone ?? "",
+                    },
+                },
+            },
+        });
+
+        return NextResponse.json({ ok: true, id: ev.data.id });
+    } catch (e: any) {
+        return NextResponse.json({ ok: false, error: e?.message || "Unknown error" }, { status: 500 });
     }
 }

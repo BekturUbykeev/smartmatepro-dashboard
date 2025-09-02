@@ -1,40 +1,35 @@
 // src/app/api/calendar/update/route.ts
 import { NextResponse } from "next/server";
-import { calendarService } from "@/lib/calendarService";
+import { getAuth, getCalendar, hasOverlap, validateSlot } from "@/lib/gcal";
 
-function toISO(date: string, time: string) {
-    const [y, m, d] = date.split("-").map(Number);
-    const [hh, mm] = time.split(":").map(Number);
-    return new Date(y, m - 1, d, hh, mm, 0).toISOString();
-}
-
-export async function POST(req: Request) {
+export async function PATCH(req: Request) {
     try {
-        const body = await req.json();
-        const { id, title, start, end, date, time, durationMins } = body || {};
-        if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
+        const { id, title, start, end } = await req.json();
+        if (!id) return NextResponse.json({ ok: false, error: "Missing id" }, { status: 400 });
 
-        const patch: { title?: string; start?: string; end?: string } = {};
-        if (typeof title === "string") patch.title = title;
+        const err = validateSlot(start, end);
+        if (err) return NextResponse.json({ ok: false, error: err }, { status: 400 });
 
-        // Вариант 1: пришли готовые ISO start/end
-        if (typeof start === "string" && typeof end === "string") {
-            patch.start = start;
-            patch.end = end;
-        }
-        // Вариант 2: пришли date/time (и, опционально, durationMins)
-        else if (typeof date === "string" && typeof time === "string") {
-            const s = toISO(date, time);
-            const dur = Number(durationMins || 60);
-            const e = new Date(new Date(s).getTime() + dur * 60000).toISOString();
-            patch.start = s;
-            patch.end = e;
+        const auth = getAuth("https://www.googleapis.com/auth/calendar");
+        const calendar = getCalendar(auth);
+        const calendarId = process.env.GOOGLE_CALENDAR_ID || "primary";
+
+        if (await hasOverlap({ calendarId, startISO: start, endISO: end, auth, excludeId: id })) {
+            return NextResponse.json({ ok: false, error: "Slot overlaps" }, { status: 409 });
         }
 
-        const updated = await calendarService.update(id, patch);
-        return NextResponse.json({ ok: true, updated });
-    } catch (e) {
-        console.error(e);
-        return NextResponse.json({ error: "Failed to update" }, { status: 500 });
+        const { data } = await calendar.events.patch({
+            calendarId,
+            eventId: id,
+            requestBody: {
+                summary: title,
+                start: { dateTime: start },
+                end: { dateTime: end },
+            },
+        });
+
+        return NextResponse.json({ ok: true, id: data.id });
+    } catch (e: any) {
+        return NextResponse.json({ ok: false, error: e?.message || "Unknown error" }, { status: 500 });
     }
 }

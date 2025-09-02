@@ -183,3 +183,7 @@ vite.config.ts.timestamp-*
 .turbo
 .env*
 
+
+# env
+.env
+.env.*

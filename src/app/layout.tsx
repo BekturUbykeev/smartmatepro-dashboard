@@ -1,7 +1,7 @@
 // src/app/layout.tsx
-import "./globals.css";           // ← ОБЯЗАТЕЛЬНО
+import "./globals.css";
 import Providers from "./providers";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "sonner"; // ← вместо "@/components/ui/toaster"
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -9,7 +9,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-background font-sans antialiased">
         <Providers>
           {children}
-          <Toaster />
+          <Toaster position="top-right" richColors expand /> {/* ← sonner */}
         </Providers>
       </body>
     </html>

@@ -1,11 +1,16 @@
+# SmartMate Pro — Dashboard New (Quickstart for Designers)
 
-  # AI Assistant Prototype
+## 1) Требования
+- Node.js 20+ (через nvm рекомендуется)
+- Git
+- VS Code
 
-  This is a code bundle for AI Assistant Prototype. The original project is available at https://www.figma.com/design/8azP3lyn8EAN8PtNFZtJPw/AI-Assistant-Prototype.
+## 2) Установка
+```bash
+git clone <repo-url>
+cd smartmatepro-dashboard
+cp .env.example .env.local
+npm i
+npm run dev
+# открой http://localhost:3000
 
-  ## Running the code
-
-  Run `npm i` to install the dependencies.
-
-  Run `npm run dev` to start the development server.
-  
